@@ -34,8 +34,8 @@ class Blockchain {
      * Passing as a data `{data: 'Genesis Block'}`
      */
     async initializeChain() {
-        if( this.height === -1){
-            let block = new BlockClass.Block({data: 'Genesis Block'});
+        if (this.height === -1) {
+            let block = new BlockClass.Block({ data: 'Genesis Block' });
             await this._addBlock(block);
         }
     }
@@ -64,7 +64,19 @@ class Blockchain {
     _addBlock(block) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-           
+            try {
+                if (self.chain.length > 0) {
+                    block.previousBlockHash = this.chain[this.chain.length - 1].hash;
+                }
+                block.height = this.chain.length;
+                block.time = new Date().getTime().toString().slice(0, -3);
+                block.hash = SHA256(JSON.stringify(block)).toString();
+
+                this.chain.push(block);
+                resolve(block);
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
@@ -78,7 +90,7 @@ class Blockchain {
      */
     requestMessageOwnershipVerification(address) {
         return new Promise((resolve) => {
-            
+            resolve(`${address}:${new Date().getTime().toString().slice(0, -3)}:starRegistry`)
         });
     }
 
@@ -102,7 +114,20 @@ class Blockchain {
     submitStar(address, message, signature, star) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            
+            const time = parseInt(message.split(':')[1]);
+            const currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
+
+            if (currentTime - time < 300) {
+                if (bitcoinMessage.verify(message, address, signature)) {
+                    let block = new BlockClass.Block({ data: star });
+                    const result = await this._addBlock(block);
+                    resolve(result);
+                } else {
+                    reject(Error('Message Verification Failed'));
+                }
+            } else {
+                reject(Error('Validation Time Expired'));
+            }
         });
     }
 
@@ -115,7 +140,12 @@ class Blockchain {
     getBlockByHash(hash) {
         let self = this;
         return new Promise((resolve, reject) => {
-           
+            let block = self.chain.filter(p => p.hash === hash)[0];
+            if (block) {
+                resolve(block);
+            } else {
+                resolve(null);
+            }
         });
     }
 
@@ -128,7 +158,7 @@ class Blockchain {
         let self = this;
         return new Promise((resolve, reject) => {
             let block = self.chain.filter(p => p.height === height)[0];
-            if(block){
+            if (block) {
                 resolve(block);
             } else {
                 resolve(null);
@@ -142,11 +172,20 @@ class Blockchain {
      * Remember the star should be returned decoded.
      * @param {*} address 
      */
-    getStarsByWalletAddress (address) {
+    getStarsByWalletAddress(address) {
         let self = this;
         let stars = [];
         return new Promise((resolve, reject) => {
-            
+            try {
+                const blocks = self.chain.filter(p => p.address === address);
+                blocks.forEach(block => {
+                    const data = await block.getBData();
+                    stars.push(data)
+                });
+                resolve(stars);
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
@@ -159,11 +198,22 @@ class Blockchain {
     validateChain() {
         let self = this;
         let errorLog = [];
+        let hash = null;
         return new Promise(async (resolve, reject) => {
-            
+            self.chain.forEach(block => {
+                const isValid = await block.validate();
+                if (!isValid) {
+                    errorLog.push(`Validation Failed for Block (${block.hash})`);
+                } else if (hash !== null && hash !== block.previousBlockHash) {
+                    errorLog.push(`Validation Failed for Block (${block.hash})`);
+                } else {
+                    hash = block.hash;
+                }
+                resolve(errorLog);
+            });
         });
     }
 
 }
 
-module.exports.Blockchain = Blockchain;   
+module.exports.Blockchain = Blockchain;

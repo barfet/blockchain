@@ -15,14 +15,14 @@ const hex2ascii = require('hex2ascii');
 class Block {
 
     // Constructor - argument data will be the object containing the transaction data
-	constructor(data){
-		this.hash = null;                                           // Hash of the block
-		this.height = 0;                                            // Block Height (consecutive number of each block)
-		this.body = Buffer.from(JSON.stringify(data)).toString('hex');   // Will contain the transactions stored in the block, by default it will encode the data
-		this.time = 0;                                              // Timestamp for the Block creation
-		this.previousBlockHash = null;                              // Reference to the previous Block Hash
+    constructor(data) {
+        this.hash = null;                                           // Hash of the block
+        this.height = 0;                                            // Block Height (consecutive number of each block)
+        this.body = Buffer.from(JSON.stringify(data)).toString('hex');   // Will contain the transactions stored in the block, by default it will encode the data
+        this.time = 0;                                              // Timestamp for the Block creation
+        this.previousBlockHash = null;                              // Reference to the previous Block Hash
     }
-    
+
     /**
      *  validate() method will validate if the block has been tampered or not.
      *  Been tampered means that someone from outside the application tried to change
@@ -39,13 +39,17 @@ class Block {
         let self = this;
         return new Promise((resolve, reject) => {
             // Save in auxiliary variable the current block hash
-                                            
-            // Recalculate the hash of the Block
-            // Comparing if the hashes changed
-            // Returning the Block is not valid
-            
-            // Returning the Block is valid
+            const currentHash = self.hash;
 
+            // Recalculate the hash of the Block
+            const newHash = SHA256(JSON.stringify(self));
+
+            // Comparing if the hashes changed
+            const isValid = currentHash === newHash;
+
+            // Returning the Block is not valid
+            // Returning the Block is valid
+            resolve(isValid);
         });
     }
 
@@ -63,8 +67,17 @@ class Block {
         // Decoding the data to retrieve the JSON representation of the object
         // Parse the data to an object to be retrieve.
 
-        // Resolve with the data if the object isn't the Genesis block
+        // Resolve with the data if the object isn't the Genesis block.
+        let self = this;
+        return new Promise((resolve, reject) => {
+            const data = JSON.parse(hex2ascii(self.body));
 
+            if (data !== 'Genesis Block') {
+                resolve(data);
+            } else {
+                reject(Error('Genesis Block'));
+            }
+        });
     }
 
 }
