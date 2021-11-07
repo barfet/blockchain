@@ -172,15 +172,18 @@ class Blockchain {
      * Remember the star should be returned decoded.
      * @param {*} address 
      */
-    async getStarsByWalletAddress(address) {
+    getStarsByWalletAddress(address) {
         let self = this;
         let stars = [];
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             try {
                 const blocks = self.chain.filter(p => p.address === address);
-                for (const block of blocks) {
-                    const data = block.getBData();
-                    stars.push(data)
+                for (let i = 0; i < blocks.length; i++) {
+                    const result = await blocks[i].getBData();
+                    stars.push({
+                        owner: address,
+                        star: result.data
+                    });
                 }
                 resolve(stars);
             } catch (error) {
@@ -195,13 +198,13 @@ class Blockchain {
      * 1. You should validate each block using `validateBlock`
      * 2. Each Block should check the with the previousBlockHash
      */
-    async validateChain() {
+    validateChain() {
         let self = this;
         let errorLog = [];
         let hash = null;
         return new Promise(async (resolve, reject) => {
-            self.chain.forEach(block => {
-                const isValid = block.validate();
+            for (const block in self.chain) {
+                const isValid = await block.validate();
                 if (!isValid) {
                     errorLog.push(`Validation Failed for Block (${block.hash})`);
                 } else if (hash !== null && hash !== block.previousBlockHash) {
@@ -210,7 +213,7 @@ class Blockchain {
                     hash = block.hash;
                 }
                 resolve(errorLog);
-            });
+            }
         });
     }
 
