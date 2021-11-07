@@ -111,7 +111,7 @@ class Blockchain {
      * @param {*} signature 
      * @param {*} star 
      */
-    submitStar(address, message, signature, star) {
+    async submitStar(address, message, signature, star) {
         let self = this;
         return new Promise(async (resolve, reject) => {
             const time = parseInt(message.split(':')[1]);
@@ -119,7 +119,7 @@ class Blockchain {
 
             if (currentTime - time < 300) {
                 if (bitcoinMessage.verify(message, address, signature)) {
-                    let block = new BlockClass.Block({ data: star });
+                    let block = new BlockClass.Block({ data: star }, address);
                     const result = await this._addBlock(block);
                     resolve(result);
                 } else {
@@ -172,16 +172,16 @@ class Blockchain {
      * Remember the star should be returned decoded.
      * @param {*} address 
      */
-    getStarsByWalletAddress(address) {
+    async getStarsByWalletAddress(address) {
         let self = this;
         let stars = [];
         return new Promise((resolve, reject) => {
             try {
                 const blocks = self.chain.filter(p => p.address === address);
-                blocks.forEach(block => {
-                    const data = await block.getBData();
+                for (const block of blocks) {
+                    const data = block.getBData();
                     stars.push(data)
-                });
+                }
                 resolve(stars);
             } catch (error) {
                 reject(error);
@@ -195,13 +195,13 @@ class Blockchain {
      * 1. You should validate each block using `validateBlock`
      * 2. Each Block should check the with the previousBlockHash
      */
-    validateChain() {
+    async validateChain() {
         let self = this;
         let errorLog = [];
         let hash = null;
         return new Promise(async (resolve, reject) => {
             self.chain.forEach(block => {
-                const isValid = await block.validate();
+                const isValid = block.validate();
                 if (!isValid) {
                     errorLog.push(`Validation Failed for Block (${block.hash})`);
                 } else if (hash !== null && hash !== block.previousBlockHash) {
