@@ -74,8 +74,13 @@ class Blockchain {
 
                 self.chain.push(block);
 
-                self.validateChain()
-                resolve(block);
+                const defectedBlocks = await self.validateChain()
+
+                if (defectedBlocks.length > 0) { 
+                    resolve('The chain is defected');
+                } else {
+                    resolve(block);
+                }
             } catch (error) {
                 reject(error);
             }
@@ -215,8 +220,8 @@ class Blockchain {
                 } else {
                     hash = block.hash;
                 }
-                resolve(errorLog);
             }
+            resolve(errorLog);
         });
     }
 
